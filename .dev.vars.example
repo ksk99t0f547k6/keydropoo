@@ -1,0 +1,5 @@
+# 三個值必須各自獨立產生，不能共用；例如 openssl rand -hex 32。
+# 部署按鈕會要求填入值；不要把實際密鑰寫進這個範本。
+BETTER_AUTH_SECRET=
+SETUP_SECRET=
+CODE_ENCRYPTION_KEY=

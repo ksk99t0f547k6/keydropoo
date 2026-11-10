@@ -1,0 +1,35 @@
+import {it,expect,vi,beforeEach,afterEach} from 'vitest';
+import {testDatabase} from './d1';
+import {createProduct,createBatch} from '../src/lib/server/inventory';
+import {reserveOrder,attachCheckout,settleOrder,refundOrder} from '../src/lib/server/orders';
+const fixture=vi.hoisted(()=>({session:null as null|{user:{id:string}},admin:false,env:{DB:null as unknown as D1Database},settings:{APP_URL:'https://keydrop.test'}}));
+vi.mock('../src/lib/server/env',()=>({runtime:async()=>({env:fixture.env,settings:fixture.settings})}));
+vi.mock('../src/lib/server/auth',()=>({createAuth:()=>({api:{getSession:async()=>fixture.session}}),isAdmin:async()=>fixture.admin}));
+import {POST} from '../src/app/api/admin/orders/[id]/route';
+let database:ReturnType<typeof testDatabase>;
+beforeEach(()=>{database=testDatabase();fixture.env.DB=database.db;fixture.session=null;fixture.admin=false;});
+afterEach(()=>database.sqlite.close());
+const send=(id:string,body:unknown,origin='https://keydrop.test')=>POST(new Request(`https://keydrop.test/api/admin/orders/${id}`,{method:'POST',headers:{origin,'Content-Type':'application/json'},body:JSON.stringify(body)}),{params:Promise.resolve({id})});
+const request=()=>({action:'review-refund',refundedMinor:100,decision:'revoke',note:'Confirmed refund with the customer.',idempotencyKey:crypto.randomUUID()});
+it('退款決策需要管理員及同源請求，拒絕自行傳入管理員身分',async()=>{
+ const id=crypto.randomUUID(),body=request();
+ expect((await send(id,body)).status).toBe(401);fixture.session={user:{id:'ordinary'}};
+ expect((await send(id,body)).status).toBe(403);fixture.admin=true;
+ expect((await send(id,body,'https://untrusted.test')).status).toBe(403);
+ expect((await send(id,{...body,adminId:'other'})).status).toBe(400);
+ expect((await send(id,{...body,note:'short'})).status).toBe(400);
+});
+it('真實退款資料可審查且重送回原收據，不存在或過期決定回 409',async()=>{
+ fixture.session={user:{id:'admin'}};fixture.admin=true;const {db,sqlite}=database;
+ const p=await createProduct(db,{name:'Product',slug:'product',priceMinor:500});
+ const b=await createBatch(db,'ab'.repeat(32),{productId:p.id,name:'Codes',kind:'redemption',source:'manual',codes:['PRIVATE-CODE']});
+ const o=await reserveOrder(db,{productId:p.id,batchId:b.id,buyerKey:'buyer',userId:'buyer',idempotencyKey:crypto.randomUUID()});await attachCheckout(db,o.id,'cs_refund_review');
+ await settleOrder(db,{orderId:o.id,sessionId:'cs_refund_review',paymentIntentId:'pi_refund_review',amountMinor:500,currency:'USD'});
+ await refundOrder(db,'pi_refund_review',100);const body=request();
+ const response=await send(o.id,body);expect(response.status).toBe(200);expect(response.headers.get('Cache-Control')).toBe('no-store');
+ const receipt=await response.json();expect(receipt).toMatchObject({admin_id:'admin',decision:'revoke',refunded_minor:100});
+ expect(await (await send(o.id,body)).json()).toEqual(receipt);
+ expect(sqlite.prepare('SELECT count(*) n FROM order_refund_reviews').get()?.n).toBe(1);
+ expect(JSON.stringify(receipt)).not.toContain('PRIVATE-CODE');
+ const conflict=await send(o.id,{...body,idempotencyKey:crypto.randomUUID(),decision:'retain'});expect(conflict.status).toBe(409);expect(conflict.headers.get('Cache-Control')).toBe('no-store');
+});

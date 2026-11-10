@@ -1,0 +1,37 @@
+// 部署按鈕會建立 D1 並替換 ID；手動部署時填入新建的資料庫 ID。
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "keydropoo",
+  "vars": {
+    "APP_URL": "https://keydropoo.dirch.workers.dev",
+    "ADMIN_EMAIL": "dirch@yahoo.com"
+  },
+  "main": "worker.ts",
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "compatibility_date": "2026-11-07",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "keydrop"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "keydrop",
+      "database_id": "e8004363-0938-4235-be85-a2195d6279d8",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

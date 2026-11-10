@@ -1,0 +1,15 @@
+{
+  "name": "Keydrop Quick handout",
+  "short_name": "Keydrop",
+  "description": "Take a code, share it, and note who got it.",
+  "start_url": "/dashboard/handout",
+  "scope": "/dashboard/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#fafaf9",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

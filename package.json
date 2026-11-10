@@ -1,0 +1,86 @@
+{
+  "name": "keydropoo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/generate-share-image.mjs && next dev",
+    "build": "node scripts/generate-share-image.mjs && next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings 0",
+    "deploy": "pnpm run prepare:deploy && pnpm run build:worker && pnpm run db:migrate:remote && opennextjs-cloudflare deploy",
+    "upload": "pnpm run prepare:deploy && pnpm run build:worker && pnpm run db:migrate:remote && opennextjs-cloudflare upload",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv --strict-vars false ./cloudflare-env.d.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "build:worker": "opennextjs-cloudflare build",
+    "prepare:deploy": "node scripts/prepare-deploy.mjs && pnpm run cf-typegen",
+    "smoke:local": "node scripts/smoke-local.mjs",
+    "test:restore": "python3 -m unittest discover -s tests -p 'test_*.py'"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@opennextjs/cloudflare": "^1.20.3",
+    "@tanstack/react-virtual": "^3.14.26",
+    "better-auth": "^1.7.18",
+    "clsx": "^2.1.1",
+    "kysely": "^0.29.8",
+    "kysely-d1": "^0.4.0",
+    "lucide-react": "^1.70.0",
+    "motion": "^14.9.1",
+    "next": "16.4.5",
+    "next-intl": "^4.14.9",
+    "next-themes": "^0.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "stripe": "^23.1.0",
+    "tailwind-merge": "^3.7.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@formatjs/icu-messageformat-parser": "^3.5.22",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.5",
+    "jsonc-parser": "3.3.1",
+    "tailwindcss": "^4",
+    "typescript": "^5.7.4",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.134.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.15.0",
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "保存碼、帳號、活動與訂單；會建立專用 D1 資料庫。"
+      },
+      "APP_URL": {
+        "description": "網站正式 HTTPS origin，例如 `https://my-keydrop.my-account.workers.dev`。請換成自己的 Worker 名稱與帳戶子網域，不含尾斜線。"
+      },
+      "ADMIN_EMAIL": {
+        "description": "初始化後唯一管理員的 Email；請改成自己的信箱。"
+      },
+      "BETTER_AUTH_SECRET": {
+        "description": "獨立產生的登入與身分索引密鑰，至少 32 字。可使用 openssl rand -hex 32；請長期保存。"
+      },
+      "SETUP_SECRET": {
+        "description": "獨立產生的一次性初始化密鑰，至少 32 字。部署後在 /setup 輸入；勿與其他密鑰共用。"
+      },
+      "CODE_ENCRYPTION_KEY": {
+        "description": "獨立產生的 64 字十六進位加密密鑰，例如 openssl rand -hex 32。遺失將無法讀取既有碼，請備份且勿任意更換。"
+      }
+    }
+  }
+}
